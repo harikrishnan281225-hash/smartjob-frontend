@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { searchJobs } from '../services/SearchService';
-import { getAllUsers } from '../services/api'; 
-import api from '../services/api'; 
+import { getAllUsers, assignJob } from '../services/api'; // Use the named import from api.js
 import UserSelectionModal from '../components/UserSelectionModal';
 
 const AdminSearchJobs = () => {
@@ -23,20 +22,20 @@ const AdminSearchJobs = () => {
                 const response = await getAllUsers();
                 setUsers(response.data);
             } catch (err) {
-                console.error("Error fetching users for assignment", err);
+                console.error("Error fetching users:", err);
             }
         };
         fetchUsers();
     }, []);
 
     const handleSearch = async () => {
-        if (!query) return;
+        if (!query.trim()) return;
         setLoading(true);
         try {
             const data = await searchJobs(query, location);
-            setResults(data);
+            setResults(data || []);
         } catch (err) {
-            alert("Failed to fetch jobs.");
+            alert("Failed to fetch jobs. Please check your search service.");
         } finally {
             setLoading(false);
         }
@@ -50,34 +49,27 @@ const AdminSearchJobs = () => {
     const performAssignment = async (userIds) => {
         if (!selectedJob) return;
         
-        const jobId = selectedJob.job_id; 
-
-        // CRITICAL: We ensure all mandatory fields are provided
-        // to prevent the SQLIntegrityConstraintViolationException
+        // Strict mapping to your Backend JobAssignmentRequest DTO
         const payload = {
             userIds: userIds,
             job: {
-                id: jobId,
-                title: selectedJob.job_title || "Untitled Job",
-                // Ensure companyName is never null
-                companyName: selectedJob.employer_name && selectedJob.employer_name.trim() !== "" 
-                             ? selectedJob.employer_name 
-                             : "Unknown Company",
-                location: selectedJob.job_city || "Remote",
-                description: selectedJob.job_description || "No description provided.",
-                url: selectedJob.job_apply_link || ""
+                id: selectedJob.job_id || selectedJob.id,
+                title: selectedJob.job_title || selectedJob.title || "Untitled Job",
+                companyName: selectedJob.employer_name || selectedJob.companyName || "Unknown",
+                location: selectedJob.job_city || selectedJob.location || "Remote",
+                description: selectedJob.job_description || selectedJob.description || "",
+                url: selectedJob.job_apply_link || selectedJob.url || ""
             }
         };
 
-        console.log("Sending payload to backend:", payload);
-        
         try {
-            await api.post('/admin/assign-job', payload);
-            alert(`Job assigned successfully!`);
+            // Using the assignJob method defined in api.js
+            await assignJob(payload);
+            alert(`Job assigned successfully to ${userIds.length} users!`);
             setIsModalOpen(false);
         } catch (err) {
-            console.error("Assignment Error Details:", err.response?.data);
-            alert("Assignment failed: " + (err.response?.data?.message || "Check server logs"));
+            console.error("Assignment Error:", err.response?.data);
+            alert("Assignment failed: " + (err.response?.data || "Check console for details"));
         }
     };
 
@@ -110,7 +102,8 @@ const AdminSearchJobs = () => {
                 />
                 <button 
                     onClick={handleSearch} 
-                    className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700"
+                    disabled={loading}
+                    className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-300"
                 >
                     {loading ? "Searching..." : "Search"}
                 </button>

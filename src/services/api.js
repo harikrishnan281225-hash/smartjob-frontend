@@ -34,20 +34,18 @@ export const getAllJobs = () => api.get('/jobs/all');
 export const getAssignedJobs = () => api.get('/jobs/assigned');
 export const postNewJob = (jobData) => api.post('/admin/post-job', jobData);
 export const assignJob = (assignmentData) => api.post('/admin/assign-job', assignmentData);
-export const updateJobStatus = (jobId, status) => api.put(`/jobs/${jobId}/status`, { status }, {
-    headers: { 'Content-Type': 'application/json' }
-});
+export const updateJobStatus = (jobId, status) => api.put(`/jobs/${jobId}/status`, { status });
 
-// FIXED: Sends exactly { "jobId": "..." } to match the ApplyRequest DTO in the backend
-export const applyForJob = (jobId) => api.post('/jobs/add', { jobId });
+export const applyForJob = (jobData) => api.post('/jobs/add', jobData);
 
 // --- ADMIN USER MANAGEMENT ---
 export const getAllUsers = () => api.get('/admin/users'); 
 export const deleteUser = (userId) => api.delete(`/admin/users/${userId}`);
-export const getUserById = (userId) => api.get(`/admin/user-details/${userId}`);
+export const getUserById = (userId) => api.get(`/admin/user-profile-stats/${userId}`); // Updated to match AdminController
 
 // --- MESSAGING & BROADCAST ---
-export const sendBroadcast = (broadcastData) => api.post('/admin/broadcast', broadcastData);
+// FIXED: Path updated to /messages/admin/broadcast to match MessageController
+export const sendBroadcast = (broadcastData) => api.post('/messages/admin/broadcast', broadcastData);
 export const getAllMessagesForAdmin = () => api.get('/messages/admin/all-messages');
 export const getMyMessages = () => api.get('/messages/inbox');
 export const markMessageAsRead = (id) => api.put(`/messages/mark-as-read/${id}`);

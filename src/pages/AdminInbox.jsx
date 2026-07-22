@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getAllMessagesForAdmin } from '../services/api'; // Ensure this points to your updated api.js
+import { getAllMessagesForAdmin } from '../services/api';
 
 const AdminInbox = () => {
     const [messages, setMessages] = useState([]);
@@ -10,18 +10,30 @@ const AdminInbox = () => {
     }, []);
 
     const fetchStatus = async () => {
+        setLoading(true);
         try {
-            // Now calling the Admin-specific endpoint for all messages
             const response = await getAllMessagesForAdmin();
+            // Ensure response.data is an array before processing
+            const data = Array.isArray(response.data) ? response.data : [];
             
             // Sort by timestamp descending (newest first)
-            const sorted = response.data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            const sorted = [...data].sort((a, b) => 
+                new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
             setMessages(sorted);
         } catch (error) {
-            console.error("Error fetching admin message reports", error);
+            console.error("Error fetching admin message reports:", error);
         } finally {
             setLoading(false);
         }
+    };
+
+    // Safe date formatter
+    const formatDate = (timestamp) => {
+        if (!timestamp) return "N/A";
+        return new Date(timestamp).toLocaleString(undefined, { 
+            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+        });
     };
 
     return (
@@ -29,35 +41,37 @@ const AdminInbox = () => {
             <h1 className="text-2xl font-bold mb-6 text-gray-800">Message Delivery Status</h1>
             
             {loading ? (
-                <div className="text-gray-500">Loading delivery reports...</div>
+                <div className="text-gray-500 animate-pulse">Loading delivery reports...</div>
             ) : messages.length === 0 ? (
-                <div className="text-gray-500">No messages found in the system.</div>
+                <div className="bg-white p-6 rounded-lg shadow text-gray-500 text-center border">
+                    No messages found in the system.
+                </div>
             ) : (
-                <div className="bg-white shadow rounded-lg overflow-hidden">
+                <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
                     <table className="w-full text-left border-collapse">
                         <thead>
-                            <tr className="bg-gray-100 text-gray-600 uppercase text-sm">
-                                <th className="p-4">Receiver ID</th>
-                                <th className="p-4">Content</th>
-                                <th className="p-4">Sent At</th>
-                                <th className="p-4">Status</th>
+                            <tr className="bg-gray-50 text-gray-600 uppercase text-xs font-semibold">
+                                <th className="p-4 border-b">Receiver ID</th>
+                                <th className="p-4 border-b">Content</th>
+                                <th className="p-4 border-b">Sent At</th>
+                                <th className="p-4 border-b">Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             {messages.map(msg => (
-                                <tr key={msg.id} className="border-t hover:bg-gray-50">
-                                    <td className="p-4 font-medium">{msg.receiverId}</td>
-                                    <td className="p-4 text-gray-700">{msg.content}</td>
+                                <tr key={msg.id} className="border-t hover:bg-gray-50 transition">
+                                    <td className="p-4 font-medium text-gray-900">{msg.receiverId}</td>
+                                    <td className="p-4 text-gray-700 truncate max-w-md">{msg.content}</td>
                                     <td className="p-4 text-sm text-gray-500">
-                                        {new Date(msg.timestamp).toLocaleString()}
+                                        {formatDate(msg.timestamp)}
                                     </td>
                                     <td className="p-4">
                                         {msg.read ? (
-                                            <span className="text-green-600 font-bold bg-green-50 px-2 py-1 rounded border border-green-200 text-xs">
+                                            <span className="text-green-700 font-bold bg-green-50 px-2 py-1 rounded border border-green-200 text-xs">
                                                 Read
                                             </span>
                                         ) : (
-                                            <span className="text-red-500 font-bold bg-red-50 px-2 py-1 rounded border border-red-200 text-xs">
+                                            <span className="text-red-600 font-bold bg-red-50 px-2 py-1 rounded border border-red-200 text-xs">
                                                 Unread
                                             </span>
                                         )}

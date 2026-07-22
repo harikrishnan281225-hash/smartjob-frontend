@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import api, { getMyMessages } from "../services/api";
+import { getMyMessages, getAssignedJobs } from "../services/api";
 
 const UserLayout = ({ children }) => {
     const navigate = useNavigate();
@@ -9,27 +9,31 @@ const UserLayout = ({ children }) => {
     const [unreadJobCount, setUnreadJobCount] = useState(0);
 
     const fetchCounts = async () => {
+        // 1. Fetch Messages safely
         try {
             const msgRes = await getMyMessages();
+            // Assuming the backend returns 200 OK with an empty array if no messages exist
             if (msgRes && Array.isArray(msgRes.data)) {
                 const unread = msgRes.data.filter(msg => msg.read === false).length;
                 setUnreadCount(unread);
             }
         } catch (error) {
-            console.warn("Could not fetch message count:", error.message);
+            // Silently fail if 404/400 (likely no data yet)
+            console.log("Info: No messages or unauthorized access to messages.");
         }
 
+        // 2. Fetch Assigned Jobs safely
         try {
-            const jobRes = await api.get('/jobs/assigned');
+            const jobRes = await getAssignedJobs();
             setUnreadJobCount(Array.isArray(jobRes.data) ? jobRes.data.length : 0);
         } catch (error) {
-            console.warn("Could not fetch job assignment count:", error.message);
+            console.log("Info: No assigned jobs or unauthorized access to jobs.");
         }
     };
 
     useEffect(() => {
         fetchCounts();
-    }, [location]); 
+    }, [location.pathname]); // Only refetch when path changes
 
     useEffect(() => {
         const handleMsgEvent = () => fetchCounts();
@@ -49,7 +53,6 @@ const UserLayout = ({ children }) => {
         navigate('/login');
     };
 
-    // Helper to generate dynamic class names for NavLinks
     const getNavLinkClass = ({ isActive }) => 
         `block p-2 rounded transition ${isActive ? 'bg-blue-600 text-white' : 'hover:bg-gray-800'}`;
 
@@ -61,7 +64,6 @@ const UserLayout = ({ children }) => {
                     <NavLink to="/dashboard" className={getNavLinkClass}>Dashboard</NavLink>
                     <NavLink to="/search-jobs" className={getNavLinkClass}>Search Jobs</NavLink>
                     
-                    {/* Job Inbox */}
                     <NavLink to="/job-inbox" className={getNavLinkClass}>
                         <div className="flex justify-between items-center">
                             <span>Job Inbox</span>
@@ -73,7 +75,6 @@ const UserLayout = ({ children }) => {
                         </div>
                     </NavLink>
 
-                    {/* Messages Inbox */}
                     <NavLink to="/inbox" className={getNavLinkClass}>
                         <div className="flex justify-between items-center">
                             <span>Messages</span>

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getMyMessages, markMessageAsRead } from '../services/api';
 
 const UserInbox = () => {
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         fetchMessages();
@@ -11,37 +12,45 @@ const UserInbox = () => {
 
     const fetchMessages = async () => {
         setLoading(true);
+        setError(null);
         try {
             const response = await getMyMessages();
-            // Safety check: ensure response.data exists and is an array
-            const data = Array.isArray(response.data) ? response.data : [];
-            const sorted = data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            // Verify structure: ensure response.data exists and is an array
+            const data = response && Array.isArray(response.data) ? response.data : [];
+            
+            // Sort by timestamp
+            const sorted = [...data].sort((a, b) => {
+                return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+            });
+            
             setMessages(sorted);
         } catch (error) {
-            console.error("Error fetching messages", error);
+            console.error("Error fetching messages:", error);
+            setError("Failed to load messages. Please ensure you are logged in.");
         } finally {
             setLoading(false);
         }
     };
 
     const handleRead = async (id, isRead) => {
-        if (isRead) return; // Prevent unnecessary API calls for already read messages
+        if (isRead) return; 
 
         try {
             await markMessageAsRead(id);
-            
-            // 1. Update local state
             setMessages(prev => prev.map(msg => 
                 msg.id === id ? { ...msg, read: true } : msg
             ));
-            
-            // 2. Dispatch event to update UserLayout notification badge
             window.dispatchEvent(new CustomEvent('messageRead'));
-            
         } catch (error) {
-            console.error("Error marking as read", error);
-            alert("Could not mark message as read. Please try again.");
+            console.error("Error marking as read:", error);
         }
+    };
+
+    const formatDate = (timestamp) => {
+        if (!timestamp) return "";
+        return new Date(timestamp).toLocaleString(undefined, { 
+            year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+        });
     };
 
     return (
@@ -50,8 +59,10 @@ const UserInbox = () => {
             
             {loading ? (
                 <div className="text-gray-500 animate-pulse">Loading your messages...</div>
+            ) : error ? (
+                <div className="bg-red-50 p-4 rounded text-red-600 border border-red-200">{error}</div>
             ) : messages.length === 0 ? (
-                <div className="bg-white p-6 rounded-lg shadow text-gray-500 text-center">
+                <div className="bg-white p-6 rounded-lg shadow text-gray-500 text-center border">
                     No messages at this time.
                 </div>
             ) : (
@@ -68,15 +79,17 @@ const UserInbox = () => {
                                     {msg.content}
                                 </p>
                                 <span className="text-sm text-gray-400">
-                                    {new Date(msg.timestamp).toLocaleString()}
+                                    {formatDate(msg.timestamp)}
                                 </span>
                             </div>
                             
-                            {msg.read ? (
-                                <span className="text-green-500 font-bold ml-4 text-sm whitespace-nowrap">✓ Read</span>
-                            ) : (
-                                <span className="text-blue-500 font-bold ml-4 text-xs uppercase animate-pulse">New</span>
-                            )}
+                            <div className="ml-4">
+                                {msg.read ? (
+                                    <span className="text-green-500 font-bold text-sm whitespace-nowrap">✓ Read</span>
+                                ) : (
+                                    <span className="text-blue-500 font-bold text-xs uppercase animate-pulse">New</span>
+                                )}
+                            </div>
                         </div>
                     ))}
                 </div>
